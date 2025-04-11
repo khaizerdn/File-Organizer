@@ -28,6 +28,10 @@ Organize your local files within a selected directory by categorizing them based
 - PowerShell 5.1 or later  
 - Read/Write permissions in the target directory
 
+## Use Case
+- Use Local-File-Generator.ps1 when you need sample data for testing file operations, indexing tools, or backup software.
+- Use Local-File-Organizer.ps1 when you want to clean up and structure your real folders by automatically moving files into appropriate categories.
+
 ## Usage
 
 1. Clone or download this repository.

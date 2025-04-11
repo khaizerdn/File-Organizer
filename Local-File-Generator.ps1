@@ -1,51 +1,79 @@
-# Define folder where random files will be created
-$testFolder = "C:\Users\Khaizer\Downloads\TestFiles"
+# Get Downloads path dynamically
+$downloadsPath = [System.IO.Path]::Combine([Environment]::GetFolderPath("UserProfile"), "Downloads")
+
+# Define main test folder
+$testFolder = Join-Path -Path $downloadsPath -ChildPath "TestFiles"
+
+# Create the main test folder if it doesn't exist
 if (-not (Test-Path -Path $testFolder)) {
-    New-Item -Path $testFolder -ItemType Directory
+    New-Item -Path $testFolder -ItemType Directory | Out-Null
     Write-Host "Created test folder: $testFolder"
 }
 
-# Define file extensions for different categories
+# Define file extensions
 $fileExtensions = @(
-    ".pdf", ".docx", ".xlsx", ".txt", ".ppt", ".pptx", ".odt", ".rtf",  # Documents
-    ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".svg", ".webp",  # Images
-    ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".mpeg", ".webm",   # Videos
-    ".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma",            # Music
-    ".zip", ".rar", ".7z", ".tar", ".gz", ".bz2",                       # Archives
-    ".exe", ".msi", ".dmg", ".pkg", ".bat", ".sh"                       # Applications
-    ".log", ".txt", ".debug",  # Logs and debugging files
-    ".ini", ".conf", ".配置",  # Configuration files
-    ".xlsm", ".xltdm",        # Excel Spreadsheet Models
-    ".mdb",                   # Microsoft Access database
-    ".js", ".css", ".xml", ".json", ".gml", ".swf", ".hdf5", ".mat", ".xladd-in", ".xsd", ".yaml", ".yml", ".xhtml"  # Various other types
+    ".pdf", ".docx", ".xlsx", ".txt", ".ppt", ".pptx", ".odt", ".rtf",
+    ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".svg", ".webp",
+    ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".mpeg", ".webm",
+    ".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma",
+    ".zip", ".rar", ".7z", ".tar", ".gz", ".bz2",
+    ".exe", ".msi", ".dmg", ".pkg", ".bat", ".sh",
+    ".log", ".debug", ".ini", ".conf", ".配置",
+    ".xlsm", ".xltdm", ".mdb",
+    ".js", ".css", ".xml", ".json", ".gml", ".swf", ".hdf5", ".mat", ".xladd-in", ".xsd", ".yaml", ".yml", ".xhtml"
 )
 
-# Number of files to create
-$numberOfFiles = 50
+# Parameters for randomization
+$numberOfTopLevelFiles = 30
+$numberOfSubfolders = 5
+$minFilesPerSubfolder = 3
+$maxFilesPerSubfolder = 10
 
-# Function to generate a random string for filenames
+# Function to generate a random alphanumeric string
 function Get-RandomString {
-    param (
-        [int]$length = 10
-    )
-    $characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    $randomString = -join (1..$length | ForEach-Object { $characters[(Get-Random -Maximum $characters.Length)] })
-    return $randomString
+    param ([int]$length = 10)
+    $chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    return -join (1..$length | ForEach-Object { $chars[(Get-Random -Minimum 0 -Maximum $chars.Length)] })
 }
 
-# Generate random files
-for ($i = 1; $i -le $numberOfFiles; $i++) {
+# Function to generate a random file with binary content
+function Create-RandomFile {
+    param (
+        [string]$folderPath
+    )
+
     $fileName = Get-RandomString -length 8
     $fileExtension = $fileExtensions | Get-Random
-    $filePath = Join-Path -Path $testFolder -ChildPath "$fileName$fileExtension"
-    
-    # Generate random content for the file
-    $fileSize = Get-Random -Minimum 1 -Maximum 1024  # Random size between 1 KB and 1 MB
-    $randomContent = -join (1..$fileSize | ForEach-Object { [char](Get-Random -Minimum 32 -Maximum 126) })
-    
-    # Create the file
-    Set-Content -Path $filePath -Value $randomContent
+    $filePath = Join-Path -Path $folderPath -ChildPath "$fileName$fileExtension"
+
+    $fileSize = Get-Random -Minimum 1024 -Maximum (1024 * 1024)  # 1 KB – 1 MB
+    $bytes = New-Object byte[] $fileSize
+    (New-Object System.Random).NextBytes($bytes)
+
+    [System.IO.File]::WriteAllBytes($filePath, $bytes)
     Write-Host "Created file: $filePath"
 }
 
-Write-Host "Random files generated successfully in $testFolder!"
+# Create top-level random files
+Write-Host "`nCreating $numberOfTopLevelFiles files in $testFolder..."
+for ($i = 1; $i -le $numberOfTopLevelFiles; $i++) {
+    Create-RandomFile -folderPath $testFolder
+}
+
+# Create random subfolders with random files
+Write-Host "`nCreating $numberOfSubfolders random subfolders with files..."
+for ($j = 1; $j -le $numberOfSubfolders; $j++) {
+    $subfolderName = Get-RandomString -length 6
+    $subfolderPath = Join-Path -Path $testFolder -ChildPath $subfolderName
+
+    New-Item -Path $subfolderPath -ItemType Directory | Out-Null
+    Write-Host "Created subfolder: $subfolderPath"
+
+    $filesInThisFolder = Get-Random -Minimum $minFilesPerSubfolder -Maximum $maxFilesPerSubfolder
+
+    for ($k = 1; $k -le $filesInThisFolder; $k++) {
+        Create-RandomFile -folderPath $subfolderPath
+    }
+}
+
+Write-Host "`nAll random files and folders created successfully in:`n$testFolder"
